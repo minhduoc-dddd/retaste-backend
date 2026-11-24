@@ -4,6 +4,7 @@ const settingSchema = new mongoose.Schema({
   enable_cod: { type: Boolean, default: true },
   enable_momo: { type: Boolean, default: true },
   enable_bank: { type: Boolean, default: true },
+  gemini_api_key: { type: String, default: '' },
   bank_info: {
     bank_id: { type: String, default: 'MB' }, // Mã ngân hàng (VD: MB, VCB, ACB, CTG...)
     account_no: { type: String, default: '' }, // Số tài khoản

@@ -20,7 +20,7 @@ router.get('/', async (req, res) => {
 // 2. Admin cập nhật cấu hình
 router.put('/', async (req, res) => {
   try {
-    const { enable_cod, enable_momo, enable_bank, bank_info } = req.body;
+    const { enable_cod, enable_momo, enable_bank, bank_info, gemini_api_key } = req.body;
     let setting = await Setting.findOne();
     
     if (!setting) {
@@ -31,6 +31,9 @@ router.put('/', async (req, res) => {
     setting.enable_momo = enable_momo;
     setting.enable_bank = enable_bank;
     setting.bank_info = bank_info;
+    if (gemini_api_key !== undefined) {
+      setting.gemini_api_key = gemini_api_key;
+    }
 
     await setting.save();
     res.json({ message: 'Cập nhật cấu hình thành công!', setting });

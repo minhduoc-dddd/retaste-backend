@@ -3,7 +3,11 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const crypto = require('crypto');
 const https = require('https');
+const os = require('os');
 require('dotenv').config();
+
+const Product = require('./models/Product');
+const Order = require('./models/Order');
 
 const app = express();
 
@@ -11,28 +15,120 @@ const app = express();
 app.use(cors()); // Cho phép Frontend gọi API
 app.use(express.json()); // Cho phép đọc dữ liệu dạng JSON
 
+// ================= KHỞI TẠO DỮ LIỆU MẪU NẾU DB TRỐNG =================
+const seedInitialProductsIfEmpty = async () => {
+  try {
+    const count = await Product.countDocuments();
+    if (count === 0) {
+      const sampleProducts = [
+        {
+          product_name: 'Phở Bò Tái Lăn Đặc Biệt',
+          category: 'Đồ ăn',
+          base_price: 65000,
+          description: 'Nước dùng ninh xương bò 12 tiếng đậm đà, thịt bò tươi mềm thơm lừng hành gừng.',
+          image_url: 'https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?auto=format&fit=crop&w=800&q=80',
+          is_available: true,
+          best_seller: true
+        },
+        {
+          product_name: 'Bún Đậu Mắm Tôm Thập Cẩm',
+          category: 'Đồ ăn',
+          base_price: 55000,
+          description: 'Mẹt bún đậu đầy đặn gồm đậu mơ rán giòn, chả cốm Hà Nội, thịt chân giò, nem chua rán.',
+          image_url: 'https://images.unsplash.com/photo-1555126634-323283e090fa?auto=format&fit=crop&w=800&q=80',
+          is_available: true,
+          best_seller: true
+        },
+        {
+          product_name: 'Bánh Xèo Tôm Nhảy Miền Trung',
+          category: 'Đồ ăn',
+          base_price: 45000,
+          description: 'Vỏ bánh vàng giòn rụm, nhân tôm đất tươi ngọt, giá đỗ, ăn kèm rau sống và nước mắm chua ngọt.',
+          image_url: 'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?auto=format&fit=crop&w=800&q=80',
+          is_available: true,
+          best_seller: true
+        },
+        {
+          product_name: 'Cơm Tấm Sườn Bì Chả Trứng',
+          category: 'Đồ ăn',
+          base_price: 50000,
+          description: 'Sườn cốt lết nướng mật ong thơm mềm, bì thính, chả hấp trứng muối và mỡ hành béo ngậy.',
+          image_url: 'https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=800&q=80',
+          is_available: true,
+          best_seller: false
+        },
+        {
+          product_name: 'Trà Đào Cam Sả Nhiệt Đới',
+          category: 'Thức uống',
+          base_price: 35000,
+          description: 'Trà đen ủ lạnh kết hợp đào miếng giòn ngọt, cam vàng tươi và hương sả thanh mát.',
+          image_url: 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?auto=format&fit=crop&w=800&q=80',
+          is_available: true,
+          best_seller: true
+        },
+        {
+          product_name: 'Cà Phê Sữa Đá Sài Gòn',
+          category: 'Thức uống',
+          base_price: 29000,
+          description: 'Hạt Robusta rang mộc pha phin truyền thống hòa quyện cùng sữa đặc sánh mịn.',
+          image_url: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=800&q=80',
+          is_available: true,
+          best_seller: false
+        },
+        {
+          product_name: 'Combo Bữa Trưa Năng Lượng (Cơm Sườn + Trà Đào)',
+          category: 'Combo',
+          base_price: 75000,
+          description: 'Tiết kiệm hơn với 01 phần Cơm Tấm Sườn Bì Chả đặc biệt kèm 01 ly Trà Đào Cam Sả mát lạnh.',
+          image_url: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80',
+          is_available: true,
+          best_seller: true
+        },
+        {
+          product_name: 'Combo Đôi Bạn Thân (Bún Đậu 2 Người + 2 Trà Tắc)',
+          category: 'Combo',
+          base_price: 115000,
+          description: 'Mẹt bún đậu thập cẩm cỡ lớn cho 2 người thưởng thức kèm 2 ly trà tắc giải nhiệt.',
+          image_url: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=80',
+          is_available: true,
+          best_seller: false
+        }
+      ];
+      await Product.insertMany(sampleProducts);
+      console.log('🌱 Đã tự động khởi tạo 8 món ăn mẫu cho thực đơn RETASTE!');
+    }
+  } catch (err) {
+    console.error('Không thể khởi tạo dữ liệu mẫu:', err.message);
+  }
+};
+
 // ================= KẾT NỐI MONGODB =================
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log('✅ Đã kết nối thành công tới MongoDB (retaste_db)'))
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/retaste_db')
+  .then(() => {
+    console.log('✅ Đã kết nối thành công tới MongoDB (retaste_db)');
+    seedInitialProductsIfEmpty();
+  })
   .catch((err) => console.error('❌ Lỗi kết nối MongoDB:', err));
 
 // ================= IMPORT CÁC ROUTES =================
 const productRoutes = require('./routes/productRoutes');
 const orderRoutes = require('./routes/orderRoutes');
-const userRoutes = require('./routes/userRoutes'); 
+const userRoutes = require('./routes/userRoutes');
 const attendanceRoutes = require('./routes/attendanceRoutes');
-const settingRoutes = require('./routes/settingRoutes'); 
+const settingRoutes = require('./routes/settingRoutes');
+const aiRoutes = require('./routes/aiRoutes');
 
 // ================= SỬ DỤNG ROUTES =================
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
-app.use('/api/users', userRoutes); 
+app.use('/api/users', userRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/settings', settingRoutes);
+app.use('/api/ai', aiRoutes);
 
 // ================= TÍCH HỢP THANH TOÁN MOMO (SANDBOX) =================
 app.post('/api/payment/momo', (req, res) => {
-  const { amount, orderInfo } = req.body;
+  const { amount, orderInfo, redirectBaseUrl } = req.body;
 
   // Bộ Key Test (Sandbox) chính thức của MoMo dành cho lập trình viên
   const partnerCode = process.env.MOMO_PARTNER_CODE || 'MOMO';
@@ -41,12 +137,17 @@ app.post('/api/payment/momo', (req, res) => {
 
   const requestId = partnerCode + new Date().getTime();
   const orderId = requestId;
-  const redirectUrl = 'http://localhost:5173/cart';
-  const ipnUrl = 'http://localhost:5000/api/payment/momo-ipn';
+
+  // Tự động lấy Origin của Frontend để hoạt động tốt cả trên localhost lẫn mạng LAN
+  const frontendOrigin = redirectBaseUrl || req.headers.origin || 'http://localhost:5173';
+  const backendHost = req.headers.host || `localhost:${process.env.PORT || 5000}`;
+  const redirectUrl = `${frontendOrigin.replace(/\/$/, '')}/cart`;
+  const ipnUrl = `http://${backendHost}/api/payment/momo-ipn`;
+
   const requestType = 'captureWallet';
   const extraData = '';
   const orderInfoText = orderInfo || 'Thanh toan don hang RETASTE';
-  const amountStr = String(amount || 10000);
+  const amountStr = String(Math.max(1000, Math.round(Number(amount || 10000))));
 
   // Tạo chữ ký điện tử (Signature) bảo mật theo chuẩn HMAC SHA256 của MoMo
   const rawSignature =
@@ -112,6 +213,11 @@ app.post('/api/payment/momo', (req, res) => {
   momoReq.end();
 });
 
+// Endpoint nhận IPN từ MoMo
+app.post('/api/payment/momo-ipn', (req, res) => {
+  res.status(204).end();
+});
+
 // ================= ROUTE CƠ BẢN =================
 app.get('/', (req, res) => {
   res.send('API của RETASTE Backend đang hoạt động!');
@@ -119,6 +225,22 @@ app.get('/', (req, res) => {
 
 // ================= KHỞI ĐỘNG SERVER =================
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server đang chạy tại cổng http://localhost:${PORT}`);
+
+const getLocalIp = () => {
+  const interfaces = os.networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name]) {
+      if (iface.family === 'IPv4' && !iface.internal) {
+        return iface.address;
+      }
+    }
+  }
+  return 'localhost';
+};
+
+app.listen(PORT, '0.0.0.0', () => {
+  const lanIp = getLocalIp();
+  console.log(`🚀 Server Backend đang chạy tại:`);
+  console.log(`   - Local:   http://localhost:${PORT}`);
+  console.log(`   - Network: http://${lanIp}:${PORT}`);
 });
